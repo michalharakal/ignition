@@ -70,6 +70,8 @@ public class RemoteImageView extends ImageView {
     private static final String ATTR_AUTO_LOAD = "autoLoad";
     private static final String ATTR_IMAGE_URL = "imageUrl";
     private static final String ATTR_ERROR_DRAWABLE = "errorDrawable";
+    private static final String ATTR_NO_PROGRESSVIEW = "noProgressView";
+
 
     private static final int STATE_DEFAULT = 0;
     private static final int STATE_LOADED = 1;
@@ -78,6 +80,8 @@ public class RemoteImageView extends ImageView {
     private int state = STATE_DEFAULT;
     private String imageUrl;
     private boolean autoLoad;
+    private boolean noProgressView;
+
 
     private ViewGroup progressViewContainer;
     private Drawable progressDrawable, errorDrawable;
@@ -108,7 +112,7 @@ public class RemoteImageView extends ImageView {
      */
     public RemoteImageView(Context context, String imageUrl, boolean autoLoad) {
         super(context);
-        initialize(context, imageUrl, null, null, autoLoad, null);
+        initialize(context, imageUrl, null, null, autoLoad, false, null);
     }
 
     /**
@@ -124,11 +128,14 @@ public class RemoteImageView extends ImageView {
      * @param autoLoad
      *            Whether the download should start immediately after creating the view. If set to
      *            false, use {@link #loadImage()} to manually trigger the image download.
+     * @param 
+     *            Whether the download should start immediately after creating the view. If set to
+     *            false, use {@link #loadImage()} to manually trigger the image download.
      */
     public RemoteImageView(Context context, String imageUrl, Drawable progressDrawable,
             Drawable errorDrawable, boolean autoLoad) {
         super(context);
-        initialize(context, imageUrl, progressDrawable, errorDrawable, autoLoad, null);
+        initialize(context, imageUrl, progressDrawable, errorDrawable, autoLoad, false, null);
     }
 
     public RemoteImageView(Context context, AttributeSet attributes) {
@@ -156,11 +163,17 @@ public class RemoteImageView extends ImageView {
         boolean autoLoad = attributes
                 .getAttributeBooleanValue(Ignition.XMLNS, ATTR_AUTO_LOAD, true);
 
-        initialize(context, imageUrl, progressDrawable, errorDrawable, autoLoad, attributes);
+
+        boolean noProgressView = attributes
+                .getAttributeBooleanValue(Ignition.XMLNS, ATTR_NO_PROGRESSVIEW, false);
+
+
+
+        initialize(context, imageUrl, progressDrawable, errorDrawable, autoLoad, noProgressView, attributes);
     }
 
     private void initialize(Context context, String imageUrl, Drawable progressDrawable,
-            Drawable errorDrawable, boolean autoLoad, AttributeSet attributes) {
+            Drawable errorDrawable, boolean autoLoad, boolean noProgressView, AttributeSet attributes) {
         this.imageUrl = imageUrl;
         this.autoLoad = autoLoad;
         this.progressDrawable = progressDrawable;
@@ -171,8 +184,11 @@ public class RemoteImageView extends ImageView {
             this.imageLoader = sharedImageLoader;
         }
 
-        progressViewContainer = new FrameLayout(getContext());
-        progressViewContainer.addView(buildProgressSpinnerView(getContext()));
+        if (!noProgressView)
+	{
+        	progressViewContainer = new FrameLayout(getContext());
+        	progressViewContainer.addView(buildProgressSpinnerView(getContext()));
+	}
 
         if (autoLoad) {
             loadImage();
@@ -204,15 +220,19 @@ public class RemoteImageView extends ImageView {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         // insert the progress view and its container as a sibling to this image view
-        if (progressViewContainer.getParent() == null) {
-            // the container for the progress view must behave identically to this view during
-            // layouting, otherwise e.g. relative positioning via IDs will break
-            progressViewContainer.setLayoutParams(getLayoutParams());
+        if (noProgressView)
+	{
+        	if (progressViewContainer.getParent() == null) {
+	            // the container for the progress view must behave identically to this view during
+	            // layouting, otherwise e.g. relative positioning via IDs will break
+	            progressViewContainer.setLayoutParams(getLayoutParams());
 
-            ViewGroup parent = (ViewGroup) getParent();
-            int index = parent.indexOfChild(this);
-            parent.addView(progressViewContainer, index + 1);
-        }
+	            ViewGroup parent = (ViewGroup) getParent();
+	            int index = parent.indexOfChild(this);
+	            parent.addView(progressViewContainer, index + 1);
+	
+	        }
+	}
 
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
@@ -259,7 +279,10 @@ public class RemoteImageView extends ImageView {
     }
 
     private void showProgressView(boolean show) {
+        if (!noProgressView)
+	{
         if (show) {
+
             state = STATE_LOADING;
             progressViewContainer.setVisibility(View.VISIBLE);
             setVisibility(View.INVISIBLE);
@@ -268,6 +291,7 @@ public class RemoteImageView extends ImageView {
             progressViewContainer.setVisibility(View.INVISIBLE);
             setVisibility(View.VISIBLE);
         }
+	}
     }
 
     private class DefaultImageLoaderHandler extends RemoteImageLoaderHandler {
@@ -334,6 +358,9 @@ public class RemoteImageView extends ImageView {
      * @return the progress view, default is a {@link ProgressBar}
      */
     public View getProgressView() {
-        return progressViewContainer.getChildAt(0);
+         if (noProgressView) 
+		return null;
+	else
+	        return progressViewContainer.getChildAt(0);
     }
 }
